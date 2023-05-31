@@ -132,6 +132,20 @@ class AgendaConntionManager {
       await job.save();
     }
   }
+
+  async updateJobData(job, ret, merge) {
+    merge = merge === undefined ? true : merge
+    try {
+      if (merge) {
+        job.attrs.data = {...(job.attrs.data||{}), ...(ret||{})}
+      } else {
+        job.attrs.data = ret||{}
+      }
+      await job.save()
+    } catch (ex) {
+      __logger.error('Error updating job data', ex)
+    }
+  }
 }
 
 module.exports = AgendaConntionManager
