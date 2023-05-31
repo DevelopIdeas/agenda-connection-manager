@@ -85,8 +85,9 @@ class AgendaConntionManager {
       self.job_times[job.attrs.name] = moment()      
       __logger.info(`Job starting`, { job: job.attrs.name, _jobQueue: self.agenda._jobQueue.length });
 
-      job.attrs.data.last_start = self.job_times[job.attrs.name].toDate()
-      await job.save()
+      await self.updateJobData(job, {
+        last_start: self.job_times[job.attrs.name].toDate()
+      })
     });
     self.agenda.on("complete", async (job) => {
       const elapsed = moment().diff(self.job_times[job.attrs.name], 'seconds')
@@ -96,15 +97,17 @@ class AgendaConntionManager {
         elapsed_min: moment().diff(self.job_times[job.attrs.name], 'minutes'),
       });
 
-      job.attrs.data.last_complete = moment().toDate()
-      job.attrs.data.last_elapsed = elapsed
-      await job.save()
+      await self.updateJobData(job, {
+        last_complete: moment().toDate(),
+        last_elapsed: elapsed
+      })
     });
     self.agenda.on("success", async (job) => {
       __logger.info(`Job success`, { job: job.attrs.name });
 
-      job.attrs.data.last_success = moment().toDate()
-      await job.save()
+      await self.updateJobData(job, {
+        last_success: moment().toDate()
+      })
     });
     self.agenda.on("fail", async (err, job) => {
       // console.log(`Job ${job.attrs.name} failed with error: ${err.message}`);
@@ -114,8 +117,9 @@ class AgendaConntionManager {
         stack: err.stack
       });
 
-      job.attrs.data.last_fail = moment().toDate()
-      await job.save()
+      await self.updateJobData(job, {
+        last_fail: moment().toDate()
+      })
     });
   }
 
