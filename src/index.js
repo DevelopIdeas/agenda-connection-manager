@@ -85,9 +85,7 @@ class AgendaConntionManager {
       self.job_times[job.attrs.name] = moment()      
       __logger.info(`Job starting`, { job: job.attrs.name, _jobQueue: self.agenda._jobQueue.length });
 
-      await self.updateJobData(job, {
-        last_start: self.job_times[job.attrs.name].toDate()
-      })
+      await self.updateJobData(job, { last_start: moment().toDate() })
     });
     self.agenda.on("complete", async (job) => {
       const elapsed = moment().diff(self.job_times[job.attrs.name], 'seconds')
@@ -97,17 +95,13 @@ class AgendaConntionManager {
         elapsed_min: moment().diff(self.job_times[job.attrs.name], 'minutes'),
       });
 
-      await self.updateJobData(job, {
-        last_complete: moment().toDate(),
-        last_elapsed: elapsed
-      })
+      await self.updateJobData(job, { last_complete: moment().toDate(), last_elapsed: elapsed })
+      // await job.save()
     });
     self.agenda.on("success", async (job) => {
       __logger.info(`Job success`, { job: job.attrs.name });
 
-      await self.updateJobData(job, {
-        last_success: moment().toDate()
-      })
+      await self.updateJobData(job, { last_success: moment().toDate() })
     });
     self.agenda.on("fail", async (err, job) => {
       // console.log(`Job ${job.attrs.name} failed with error: ${err.message}`);
@@ -116,10 +110,7 @@ class AgendaConntionManager {
         message: err.message,
         stack: err.stack
       });
-
-      await self.updateJobData(job, {
-        last_fail: moment().toDate()
-      })
+      await self.updateJobData(job, { last_fail: moment().toDate() })
     });
   }
 
@@ -141,11 +132,15 @@ class AgendaConntionManager {
     merge = merge === undefined ? true : merge
     try {
       if (merge) {
-        job.attrs.data = {...(job.attrs.data||{}), ...(ret||{})}
+        ret = {...(job.attrs.data||{}), ...(ret||{})}
       } else {
-        job.attrs.data = ret||{}
+        ret = ret||{}
       }
-      await job.save()
+      const resp = await this.collection.findOneAndUpdate(
+        {_id: job.attrs._id },
+        { $set: { data: ret } },
+        {returnOriginal: false}
+      );
     } catch (ex) {
       __logger.error('Error updating job data', ex)
     }
