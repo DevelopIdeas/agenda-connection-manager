@@ -51,7 +51,10 @@ class AgendaConntionManager {
     // });
   }
 
-  setConnected(connected, error) {
+  async setConnected(connected, error) {
+    const wasConnected = this.connected
+    const hadError = !!this.connectionError
+    
     this.connected = connected
     this.connectionError = error
     if (error) {
@@ -60,17 +63,40 @@ class AgendaConntionManager {
 
     if (!connected && error) {
       __logger.error('Connection Error', { error })
+      
+      // Stop Agenda when connection is lost
+      if (this.agenda && wasConnected) {
+        try {
+          __logger.warn('Stopping Agenda due to connection loss')
+          await this.agenda.stop()
+        } catch (ex) {
+          __logger.error('Error stopping Agenda', ex)
+        }
+      }
+      
       if (!this.disconnectTimeout) {
+        // Reduced timeout from 10 minutes to 2 minutes
         this.disconnectTimeout = setTimeout(() => {
           __logger.error('Closing Process for Restart', {  error })
           process.exit(1)
-        }, this.collection ? 10*60*1000 : 10*1000)
+        }, this.collection ? 2*60*1000 : 10*1000)
       }
     } else if (connected) {
       __logger.info('Connection Established')
       if (this.disconnectTimeout) {
         clearTimeout(this.disconnectTimeout)
         this.disconnectTimeout = null
+      }
+      
+      // Restart Agenda when connection is restored after an error
+      if (this.agenda && !wasConnected && hadError) {
+        try {
+          __logger.info('Restarting Agenda after connection restored')
+          await this.agenda.start()
+          __logger.info('Agenda restarted successfully')
+        } catch (ex) {
+          __logger.error('Error restarting Agenda', ex)
+        }
       }
     }
   }
